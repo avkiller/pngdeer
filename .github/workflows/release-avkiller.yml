@@ -16,8 +16,6 @@ jobs:
             target: aarch64-apple-darwin
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     env:
       TARGET: ${{ matrix.target }}
@@ -31,7 +29,8 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - name: Patch jconfigint.h for MSVC
-        if: runner.os == 'Windows'
+        #if: runner.os == 'Windows'
+        if: false
         shell: pwsh
         run: |
           $file = "vendor/mozjpeg/config/jconfigint.h"
