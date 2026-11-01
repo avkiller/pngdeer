@@ -36,7 +36,32 @@ jobs:
         run: |
           $file = "vendor/mozjpeg/config/jconfigint.h"
           $content = Get-Content $file -Raw
+
+          # 1) INLINE
           $content = $content -replace '#define INLINE\s+__inline__ __attribute__\(\(always_inline\)\)', '#define INLINE  __forceinline'
+
+          # 2) SIZEOF_SIZE_T
+          $content = $content -replace '(?m)^#define SIZEOF_SIZE_T\s+__SIZEOF_SIZE_T__\s*$', @'
+          #if defined(_MSC_VER)
+          #define SIZEOF_SIZE_T  sizeof(size_t)
+          #else
+          #define SIZEOF_SIZE_T  __SIZEOF_SIZE_T__
+          #endif
+          '@.Trim()
+
+          # 3) HAVE_BUILTIN_CTZL 的守卫
+          $content = $content -replace '(?m)^#if __SIZEOF_LONG__ == __SIZEOF_SIZE_T__\s*$', @'
+          #if !defined(_MSC_VER) && defined(__SIZEOF_LONG__) && defined(__SIZEOF_SIZE_T__) && \
+          __SIZEOF_LONG__ == __SIZEOF_SIZE_T__
+          '@.Trim()
+
+          # 校验
+          if ($content -notmatch '__forceinline') { Write-Error "INLINE patch failed"; exit 1 }
+          if ($content -notmatch 'sizeof\(size_t\)') { Write-Error "SIZEOF_SIZE_T patch failed"; exit 1 }
+          if ($content -notmatch '!defined\(_MSC_VER\)') { Write-Error "HAVE_BUILTIN_CTZL patch failed"; exit 1 }
+
+          Set-Content $file $content -NoNewline
+          Select-String -Path $file -Pattern 'INLINE|SIZEOF_SIZE_T|HAVE_BUILTIN_CTZL' -Context 0,1
           Set-Content $file $content -NoNewline
           # 打印结果确认替换生效
           Select-String -Path $file -Pattern 'INLINE'
