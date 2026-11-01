@@ -1,0 +1,47 @@
+name: Windows cross-compile (MinGW)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'vendor/mozjpeg/**'
+      - 'vendor/clib/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/windows-cross.yml'
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install MinGW-w64 and Rust target
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+          rustup target add x86_64-pc-windows-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-gnu
+
+      - name: Build
+        run: cargo build --release --target x86_64-pc-windows-gnu
+        env:
+          # 让 cc crate 使用 MinGW 的 gcc，而不是 Linux 的 gcc
+          CC_x86_64_pc_windows_gnu: x86_64-w64-mingw32-gcc
+          AR_x86_64_pc_windows_gnu: x86_64-w64-mingw32-ar
+          # 静态链接 MinGW 运行时，产出单文件 exe
+          RUSTFLAGS: "-C target-feature=+crt-static"
+
+      - name: Check output
+        run: |
+          ls -lh target/x86_64-pc-windows-gnu/release/pngdeer.exe
+          file target/x86_64-pc-windows-gnu/release/pngdeer.exe
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: pngdeer-windows-x86_64-gnu
+          path: target/x86_64-pc-windows-gnu/release/pngdeer.exe
