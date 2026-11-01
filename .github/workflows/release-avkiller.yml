@@ -65,6 +65,27 @@ jobs:
           Set-Content $file $content -NoNewline
           # 打印结果确认替换生效
           Select-String -Path $file -Pattern 'INLINE'
+
+          # 4) SIZEOF_SIZE_T 拆成运行时和预处理期两个宏
+          $file = "vendor/mozjpeg/config/jconfigint.h"
+          $content = Get-Content $file -Raw
+          $content = $content -replace '(?m)^#if defined\(_MSC_VER\)\s*\r?\n#define SIZEOF_SIZE_T  sizeof\(size_t\)\s*\r?\n#else\s*\r?\n#define SIZEOF_SIZE_T  __SIZEOF_SIZE_T__\s*\r?\n#endif\s*$', @'
+          #if defined(_MSC_VER)
+          #define SIZEOF_SIZE_T  sizeof(size_t)
+          #define SIZEOF_SIZE_T_PP  8
+          #else
+          #define SIZEOF_SIZE_T  __SIZEOF_SIZE_T__
+          #define SIZEOF_SIZE_T_PP  __SIZEOF_SIZE_T__
+          #endif
+          '@.Trim()
+          Set-Content $file $content -NoNewline
+
+          # 5) jchuff.c 的 #if 用 SIZEOF_SIZE_T_PP
+          $file = "vendor/mozjpeg/mozjpeg/jchuff.c"
+          $content = Get-Content $file -Raw
+          $content = $content -replace '\(defined\(SIZEOF_SIZE_T\) && SIZEOF_SIZE_T == 8\)', '(defined(SIZEOF_SIZE_T_PP) && SIZEOF_SIZE_T_PP == 8)'
+          $content = $content -replace '\(defined\(SIZEOF_SIZE_T\) && SIZEOF_SIZE_T == 4\)', '(defined(SIZEOF_SIZE_T_PP) && SIZEOF_SIZE_T_PP == 4)'
+          Set-Content $file $content -NoNewline
       - name: Build and test
         run: |
           cargo build --release --locked --package pngdeer --target "$TARGET"
