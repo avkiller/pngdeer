@@ -1,15 +1,7 @@
-name: Windows cross-compile (MinGW)
+name: Windows cross-compile (MinGW) for avkiller
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'vendor/mozjpeg/**'
-      - 'vendor/clib/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - '.github/workflows/windows-cross.yml'
+  workflow_dispatch: 
 
 jobs:
   build-windows:
