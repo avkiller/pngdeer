@@ -1,4 +1,4 @@
-name: Release binaries
+name: Release binaries for avkiller
 
 on:
   workflow_dispatch:
@@ -30,6 +30,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - name: Patch jconfigint.h for MSVC
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $file = "vendor/mozjpeg/config/jconfigint.h"
+          $content = Get-Content $file -Raw
+          $content = $content -replace '#define INLINE\s+__inline__ __attribute__\(\(always_inline\)\)', '#define INLINE  __forceinline'
+          Set-Content $file $content -NoNewline
+          # 打印结果确认替换生效
+          Select-String -Path $file -Pattern 'INLINE'
       - name: Build and test
         run: |
           cargo build --release --locked --package pngdeer --target "$TARGET"
